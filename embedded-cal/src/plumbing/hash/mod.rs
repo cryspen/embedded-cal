@@ -31,6 +31,9 @@ pub const fn hash_buffer_requirements<T: Hash>() -> usize {
     } else {
         0
     };
-    // When more come, place the maximum here
+    #[allow(
+        clippy::let_and_return,
+        reason = "this will become a maximum of multiple blocks above for different hashes"
+    )]
     for_sha2
 }
