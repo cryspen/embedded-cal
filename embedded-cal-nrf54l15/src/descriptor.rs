@@ -121,6 +121,15 @@ impl<Direction, const N: usize> DescriptorChain<Direction, N> {
         self.update_links();
         &self.descs[0] as *const Descriptor as u32
     }
+
+    /// Calls `f` with the address of the first descriptor, holding a `&mut self`
+    /// borrow for the duration of the call.
+    ///
+    /// This guarantees that the descriptor chain remains live and pinned in memory
+    /// while `f` is executing, so the pointer passed to hardware stays valid.
+    pub(crate) fn with_first_pointer(&mut self, f: impl FnOnce(u32) -> ()) {
+        f(self.first())
+    }
 }
 
 impl<const N: usize> DescriptorChain<Input, N> {

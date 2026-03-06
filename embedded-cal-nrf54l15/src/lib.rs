@@ -148,29 +148,33 @@ impl Nrf54l15Cal {
         input_descriptors: &mut DescriptorChain<Input, N>,
         output_descriptors: &mut DescriptorChain<Output, N>,
     ) -> () {
-        let dma = self.cracen_core.cryptmstrdma();
-        // Configure DMA source
-        dma.fetchaddrlsb().write_value(input_descriptors.first());
+        input_descriptors.with_first_pointer(|input_ptr| {
+            output_descriptors.with_first_pointer(|output_ptr| {
+                let dma = self.cracen_core.cryptmstrdma();
+                // Configure DMA source
+                dma.fetchaddrlsb().write_value(input_ptr);
 
-        // Configure DMA sink
-        dma.pushaddrlsb().write_value(output_descriptors.first());
+                // Configure DMA sink
+                dma.pushaddrlsb().write_value(output_ptr);
 
-        dma.config().write(|w| {
-            w.set_fetchctrlindirect(true);
-            w.set_pushctrlindirect(true);
-            w.set_fetchstop(false);
-            w.set_pushstop(false);
-            w.set_softrst(false)
+                dma.config().write(|w| {
+                    w.set_fetchctrlindirect(true);
+                    w.set_pushctrlindirect(true);
+                    w.set_fetchstop(false);
+                    w.set_pushstop(false);
+                    w.set_softrst(false)
+                });
+
+                // Start DMA
+                dma.start().write(|w| {
+                    w.set_startfetch(true);
+                    w.set_startpush(true)
+                });
+
+                // Wait
+                while dma.status().read().fetchbusy() {}
+                while dma.status().read().pushbusy() {}
+            });
         });
-
-        // Start DMA
-        dma.start().write(|w| {
-            w.set_startfetch(true);
-            w.set_startpush(true)
-        });
-
-        // Wait
-        while dma.status().read().fetchbusy() {}
-        while dma.status().read().pushbusy() {}
     }
 }
