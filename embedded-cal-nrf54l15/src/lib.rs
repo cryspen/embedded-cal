@@ -104,7 +104,7 @@ impl embedded_cal::plumbing::hash::Sha2Short for Nrf54l15Cal {
 
     fn update(&mut self, instance: &mut Self::State, data: &[u8]) {
         debug_assert!(
-            data.len() % 64 == 0,
+            data.len().is_multiple_of(64),
             "Chunking requirements laid out in Self::FIRST_CHUNK_SIZE not upheld."
         );
 
@@ -147,7 +147,7 @@ impl Nrf54l15Cal {
         &mut self,
         input_descriptors: &mut DescriptorChain<Input, N>,
         output_descriptors: &mut DescriptorChain<Output, N>,
-    ) -> () {
+    ) {
         input_descriptors.with_first_pointer(|input_ptr| {
             output_descriptors.with_first_pointer(|output_ptr| {
                 let dma = self.cracen_core.cryptmstrdma();
