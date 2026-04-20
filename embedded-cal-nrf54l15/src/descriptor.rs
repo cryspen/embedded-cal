@@ -66,13 +66,13 @@ pub(crate) struct Output;
 ///
 /// `Direction` is either [`Input`] or [`Output`], distinguishing read-from-memory and
 /// write-to-memory chains at the type level.
-pub(crate) struct DescriptorChain<Direction, const N: usize> {
+pub(crate) struct DescriptorChain<'mem, Direction, const N: usize> {
     descs: [Descriptor; N],
     count: usize,
-    _dir: core::marker::PhantomData<Direction>,
+    _dir: core::marker::PhantomData<&'mem Direction>,
 }
 
-impl<Direction, const N: usize> DescriptorChain<Direction, N> {
+impl<'mem, Direction, const N: usize> DescriptorChain<'mem, Direction, N> {
     /// Creates an empty `DescriptorChain`.
     ///
     /// The chain is initialized with all descriptors zero-filled and contains
@@ -127,12 +127,22 @@ impl<Direction, const N: usize> DescriptorChain<Direction, N> {
     ///
     /// This guarantees that the descriptor chain remains live and pinned in memory
     /// while `f` is executing, so the pointer passed to hardware stays valid.
+    ///
+    /// # Safety
+    ///
+    /// This function is not unsafe to use on its own, but typically used to call
+    /// `dma.fetchaddrlsb().write_value(…)` or `dma.fpushaddrlsb().write_value(…)` the argument,
+    /// which is an unsafe operation.
+    ///
+    /// To make that operation safe, `f` must wait until END or ERROR is observed on the relevant
+    /// EasyDMA. It must not return **or panic** between starting the DMA operation and observing
+    /// its completion.
     pub(crate) fn with_first_pointer(&mut self, f: impl FnOnce(u32) -> ()) {
         f(self.first())
     }
 }
 
-impl<const N: usize> DescriptorChain<Input, N> {
+impl<'mem, const N: usize> DescriptorChain<'mem, Input, N> {
     /// Appends an input (read) buffer to the chain.
     ///
     /// The DMA engine will read from `data` during the transfer.
@@ -140,9 +150,7 @@ impl<const N: usize> DescriptorChain<Input, N> {
     /// # Safety / Correctness requirements
     ///
     /// - `data` must be DMA-accessible memory.
-    /// - The chain must not be mutated after being handed to the EasyDMA
-    ///   hardware until the END or ERROR event is observed.
-    pub(crate) fn push(&mut self, data: &[u8], dmatag: u32) {
+    pub(crate) fn push(&mut self, data: &'mem [u8], dmatag: u32) {
         self.push_descriptor(Descriptor::new(
             data.as_ptr() as *mut u8,
             sz(data.len()),
@@ -151,7 +159,7 @@ impl<const N: usize> DescriptorChain<Input, N> {
     }
 }
 
-impl<const N: usize> DescriptorChain<Output, N> {
+impl<'mem, const N: usize> DescriptorChain<'mem, Output, N> {
     /// Appends an output (write) buffer to the chain.
     ///
     /// The DMA engine will write into `data` during the transfer.
@@ -159,9 +167,7 @@ impl<const N: usize> DescriptorChain<Output, N> {
     /// # Safety / Correctness requirements
     ///
     /// - `data` must be DMA-accessible memory.
-    /// - The chain must not be mutated after being handed to the EasyDMA
-    ///   hardware until the END or ERROR event is observed.
-    pub(crate) fn push(&mut self, data: &mut [u8], dmatag: u32) {
+    pub(crate) fn push(&mut self, data: &'mem mut [u8], dmatag: u32) {
         self.push_descriptor(Descriptor::new(data.as_mut_ptr(), sz(data.len()), dmatag));
     }
 }
