@@ -69,7 +69,7 @@ pub(crate) struct Output;
 pub(crate) struct DescriptorChain<'mem, Direction, const N: usize> {
     descs: [Descriptor; N],
     count: usize,
-    _dir: core::marker::PhantomData<&'mem Direction>,
+    _dir: core::marker::PhantomData<*mut &'mem Direction>,
 }
 
 impl<'mem, Direction, const N: usize> DescriptorChain<'mem, Direction, N> {
