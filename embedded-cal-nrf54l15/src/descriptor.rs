@@ -137,7 +137,7 @@ impl<'mem, Direction, const N: usize> DescriptorChain<'mem, Direction, N> {
     /// To make that operation safe, `f` must wait until END or ERROR is observed on the relevant
     /// EasyDMA. It must not return **or panic** between starting the DMA operation and observing
     /// its completion.
-    pub(crate) fn with_first_pointer(&mut self, f: impl FnOnce(u32) -> ()) {
+    pub(crate) fn with_first_pointer(&mut self, f: impl FnOnce(u32)) {
         f(self.first())
     }
 }
@@ -177,7 +177,7 @@ impl<'mem, const N: usize> DescriptorChain<'mem, Output, N> {
 const fn sz(n: usize) -> u32 {
     const DMA_REALIGN: usize = 0x2000_0000;
     debug_assert!(
-        n % 4 == 0,
+        n.is_multiple_of(4),
         "Sizes passed through this function need to be in multiples of the word size"
     );
     (n | DMA_REALIGN) as u32
